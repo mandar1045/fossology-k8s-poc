@@ -1,0 +1,42 @@
+{{- if .Values.postInstallJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "fossology.fullname" . }}-postinstall
+  labels:
+{{ include "fossology.labels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.postInstallJob.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.postInstallJob.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+{{ include "fossology.labels" . | indent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: fo-postinstall
+          image: {{ include "fossology.fossologyImage" . }}
+          imagePullPolicy: {{ .Values.images.fossology.pullPolicy }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              until pg_isready -h {{ include "fossology.dbHost" . }} -U {{ .Values.database.user }} -d {{ .Values.database.name }}; do
+                echo "Waiting for database..."
+                sleep 3
+              done
+
+              cat <<'EOF' > /usr/local/etc/fossology/Db.conf
+              dbname={{ .Values.database.name }};
+              host={{ include "fossology.dbHost" . }};
+              user={{ .Values.database.user }};
+              password={{ .Values.database.password }};
+              EOF
+
+              /usr/local/lib/fossology/fo-postinstall --common --database --licenseref
+{{- end }}

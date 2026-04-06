@@ -1,0 +1,55 @@
+; FOSSology configuration for the Kubernetes PoC
+; SPDX-License-Identifier: GPL-2.0-only
+
+[FOSSOLOGY]
+port = 24693
+address = __SCHEDULER_HOST__
+depth = 3
+path = /srv/fossology/repository
+
+; [HOSTS] format: label = address conf_dir max_agents
+; - label:     short name (no dots — PHP ini parser limitation)
+; - address:   DNS/IP the scheduler SSHes to
+; - conf_dir:  path to fossology config on the worker
+; - max:       max concurrent agents on that host
+[HOSTS]
+__HOSTS__
+
+[REPOSITORY]
+localhost[] = * 00 ff
+
+[DIRECTORIES]
+PROJECT=fossology
+PROJECTGROUP=fossy
+PROJECTUSER=fossy
+PREFIX=/usr/local
+BINDIR=$PREFIX/bin
+SBINDIR=$PREFIX/sbin
+LIBDIR=$PREFIX/lib
+INCLUDEDIR=$PREFIX/include
+LIBEXECDIR=$PREFIX/lib/$PROJECT
+DATAROOTDIR=$PREFIX/share
+MODDIR=$DATAROOTDIR/$PROJECT
+LOCALSTATEDIR=/var/local
+PROJECTSTATEDIR=$LOCALSTATEDIR/lib/$PROJECT
+CACHEDIR=$LOCALSTATEDIR/cache/$PROJECT
+LOGDIR=/var/log/$PROJECT
+
+[EMAILNOTIFY]
+header  = sampleheader.txt
+footer  = samplefooter.txt
+subject = FOSSology scan complete
+client  = /usr/bin/s-nail
+
+[EXT_AUTH]
+CONF_EXT_AUTH_ENABLE=false
+CONF_EXT_AUTH_ENV_USER=
+CONF_EXT_AUTH_ENV_MAIL=
+CONF_EXT_AUTH_ENV_DESC=
+CONF_EXT_AUTH_LOWERCASE_USER=true
+CONF_EXT_AUTH_NEW_USER_AUTO_CREATE=true
+CONF_EXT_AUTH_NEW_USER_AGENT_LIST=
+
+[AUTHENTICATION]
+provider = password
+resttoken = token

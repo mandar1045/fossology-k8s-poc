@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fossology
+description: Phase 1 Helm chart for the FOSSology Kubernetes PoC
+type: application
+version: 0.1.0
+appVersion: "4.4.0"

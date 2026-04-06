@@ -1,0 +1,210 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fossology.fullname" . }}-web
+  labels:
+{{ include "fossology.labels" . | indent 4 }}
+    app: {{ include "fossology.fullname" . }}-web
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "fossology.fullname" . }}-web
+  template:
+    metadata:
+      labels:
+{{ include "fossology.labels" . | indent 8 }}
+        app: {{ include "fossology.fullname" . }}-web
+    spec:
+      serviceAccountName: {{ include "fossology.serviceAccountName" . }}
+      shareProcessNamespace: true
+      initContainers:
+        - name: wait-for-db
+          image: {{ include "fossology.postgresImage" . }}
+          imagePullPolicy: {{ .Values.images.postgres.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h {{ include "fossology.dbHost" . }} -U {{ .Values.database.user }} -d {{ .Values.database.name }}; do
+                echo "Waiting for database..."
+                sleep 3
+              done
+              echo "Database is ready!"
+        - name: init-config-runtime
+          image: {{ include "fossology.fossologyImage" . }}
+          imagePullPolicy: {{ .Values.images.fossology.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              cp -a /usr/local/etc/fossology/. /config-runtime/
+          volumeMounts:
+            - name: config-runtime
+              mountPath: /config-runtime
+        - name: render-fossology-conf
+          image: {{ include "fossology.fossologyImage" . }}
+          imagePullPolicy: {{ .Values.images.fossology.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              python3 /config-source/render_fossology_conf.py \
+                --mode=once \
+                --template=/config-source/fossology.conf.tmpl \
+                --output=/config-runtime/fossology.conf \
+                --namespace="${POD_NAMESPACE}" \
+                --label-selector=app={{ include "fossology.fullname" . }}-worker \
+                --headless-service={{ include "fossology.fullname" . }}-workers \
+                --worker-conf-dir=/usr/local/etc/fossology \
+                --max-agents-per-worker="${WORKER_MAX_AGENTS}" \
+                --min-ready-workers="${WORKER_MIN_READY_STARTUP}" \
+                --scheduler-host="${MY_POD_IP}" \
+                --poll-interval-seconds={{ .Values.runtimeConfig.startupPollIntervalSeconds }} \
+                --timeout-seconds={{ .Values.runtimeConfig.timeoutSeconds }}
+              chmod 644 /config-runtime/fossology.conf
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: WORKER_MAX_AGENTS
+              value: {{ .Values.workers.maxAgentsPerWorker | quote }}
+            - name: WORKER_MIN_READY_STARTUP
+              value: {{ .Values.workers.minReadyStartup | quote }}
+          volumeMounts:
+            - name: config-runtime
+              mountPath: /config-runtime
+            - name: config-source
+              mountPath: /config-source
+              readOnly: true
+      containers:
+        - name: fossology
+          image: {{ include "fossology.fossologyImage" . }}
+          imagePullPolicy: {{ .Values.images.fossology.pullPolicy }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+
+              echo "[web] Setting up SSH client..."
+              mkdir -p /root/.ssh /home/fossy/.ssh
+              cp /run/secrets/ssh-private/id_ed25519 /root/.ssh/id_ed25519
+              cp /run/secrets/ssh-private/id_ed25519 /home/fossy/.ssh/id_ed25519
+              chmod 600 /root/.ssh/id_ed25519 /home/fossy/.ssh/id_ed25519
+              printf 'Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n  LogLevel ERROR\n  IdentityFile /root/.ssh/id_ed25519\n' > /root/.ssh/config
+              printf 'Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n  LogLevel ERROR\n  IdentityFile /home/fossy/.ssh/id_ed25519\n' > /home/fossy/.ssh/config
+              chmod 600 /root/.ssh/config /home/fossy/.ssh/config
+              chown -R fossy:fossy /home/fossy/.ssh
+
+              echo "[web] Scheduler will bind to pod IP: ${MY_POD_IP}"
+              chmod 644 /usr/local/etc/fossology/fossology.conf || true
+              echo "[web] Active worker hosts:"
+              sed -n '/^\[HOSTS\]/,/^\[REPOSITORY\]/p' /usr/local/etc/fossology/fossology.conf
+
+              export FOSSOLOGY_SCHEDULER_HOST="${MY_POD_IP}"
+              exec /fossology/docker-entrypoint.sh
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: FOSSOLOGY_DB_HOST
+              value: {{ include "fossology.dbHost" . | quote }}
+            - name: FOSSOLOGY_DB_NAME
+              value: {{ .Values.database.name | quote }}
+            - name: FOSSOLOGY_DB_USER
+              value: {{ .Values.database.user | quote }}
+            - name: FOSSOLOGY_DB_PASSWORD
+              value: {{ .Values.database.password | quote }}
+          ports:
+            - containerPort: 80
+              name: http
+            - containerPort: 24693
+              name: scheduler
+          volumeMounts:
+            - name: fossology-repo
+              mountPath: /srv/fossology/repository
+            - name: config-runtime
+              mountPath: /usr/local/etc/fossology
+            - name: ssh-private
+              mountPath: /run/secrets/ssh-private
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /repo
+              port: 80
+            initialDelaySeconds: {{ .Values.web.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.web.readinessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.web.readinessProbe.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: /repo
+              port: 80
+            initialDelaySeconds: {{ .Values.web.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.web.livenessProbe.periodSeconds }}
+{{- with .Values.web.resources }}
+          resources:
+{{ toYaml . | indent 12 }}
+{{- end }}
+        - name: config-sync
+          image: {{ include "fossology.fossologyImage" . }}
+          imagePullPolicy: {{ .Values.images.fossology.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              python3 /config-source/render_fossology_conf.py \
+                --mode=loop \
+                --template=/config-source/fossology.conf.tmpl \
+                --output=/usr/local/etc/fossology/fossology.conf \
+                --namespace="${POD_NAMESPACE}" \
+                --label-selector=app={{ include "fossology.fullname" . }}-worker \
+                --headless-service={{ include "fossology.fullname" . }}-workers \
+                --worker-conf-dir=/usr/local/etc/fossology \
+                --max-agents-per-worker="${WORKER_MAX_AGENTS}" \
+                --min-ready-workers="${WORKER_MIN_READY_SYNC}" \
+                --scheduler-host="${MY_POD_IP}" \
+                --poll-interval-seconds={{ .Values.runtimeConfig.pollIntervalSeconds }} \
+                --timeout-seconds={{ .Values.runtimeConfig.timeoutSeconds }} \
+                --signal-command='pkill -HUP -f /usr/local/share/fossology/scheduler/agent/fo_scheduler'
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: WORKER_MAX_AGENTS
+              value: {{ .Values.workers.maxAgentsPerWorker | quote }}
+            - name: WORKER_MIN_READY_SYNC
+              value: {{ .Values.workers.minReadySync | quote }}
+          volumeMounts:
+            - name: config-runtime
+              mountPath: /usr/local/etc/fossology
+            - name: config-source
+              mountPath: /config-source
+              readOnly: true
+      volumes:
+        - name: fossology-repo
+          persistentVolumeClaim:
+            claimName: {{ include "fossology.repoPvcName" . }}
+        - name: config-runtime
+          emptyDir: {}
+        - name: config-source
+          configMap:
+            name: {{ include "fossology.runtimeConfigName" . }}
+        - name: ssh-private
+          secret:
+            secretName: {{ .Values.ssh.privateSecretName }}
+            defaultMode: 0600

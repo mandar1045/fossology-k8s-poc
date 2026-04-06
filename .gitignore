@@ -1,0 +1,25 @@
+# Generated SSH keys — never commit private keys
+secrets/id_ed25519
+secrets/id_ed25519.pub
+
+# Generated k8s secret manifests
+secrets/secret-ssh-generated.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*~
+
+# Local debug artifacts
+.debug/
+.codex
+
+# Upstream FOSSology source (not part of this PoC)
+fossology-gsoc/
+
+# Python
+__pycache__/

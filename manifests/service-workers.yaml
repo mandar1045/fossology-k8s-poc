@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fossology-workers
+  namespace: fossology
+spec:
+  selector:
+    app: fossology-worker
+  # Headless service for stable DNS names per pod
+  # fossology-workers-0.fossology-workers.fossology.svc.cluster.local
+  clusterIP: None
+  ports:
+  - port: 22
+    targetPort: 22
+    protocol: TCP
+    name: ssh

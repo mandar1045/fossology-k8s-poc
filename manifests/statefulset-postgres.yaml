@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: fossology-db
+  namespace: fossology
+spec:
+  serviceName: fossology-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fossology-db
+  template:
+    metadata:
+      labels:
+        app: fossology-db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:16
+        env:
+        - name: POSTGRES_DB
+          value: fossology
+        - name: POSTGRES_USER
+          value: fossy
+        - name: POSTGRES_PASSWORD
+          value: fossy
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        ports:
+        - containerPort: 5432
+          name: postgres
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "fossy", "-d", "fossology"]
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 12
+        livenessProbe:
+          exec:
+            command: ["pg_isready", "-U", "fossy", "-d", "fossology"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-data

@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fossology
+  namespace: argocd
+spec:
+  project: fossology
+  source:
+    repoURL: https://github.com/mandar1045/fossology-k8s-poc.git
+    targetRevision: HEAD
+    path: deploy/helm/fossology
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: fossology
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

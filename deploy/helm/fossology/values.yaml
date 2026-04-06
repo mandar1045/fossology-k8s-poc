@@ -1,0 +1,96 @@
+fullnameOverride: fossology
+
+images:
+  fossology:
+    repository: fossology-worker
+    tag: poc
+    pullPolicy: Never
+  postgres:
+    repository: postgres
+    tag: "16"
+    pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: ""
+
+rbac:
+  create: true
+
+ssh:
+  privateSecretName: fossology-ssh-private
+  publicSecretName: fossology-ssh-public
+
+database:
+  host: ""
+  name: fossology
+  user: fossy
+  password: fossy
+  dbConfSecretName: ""
+  internal:
+    enabled: true
+    persistence:
+      enabled: true
+      accessModes:
+        - ReadWriteOnce
+      size: 2Gi
+      storageClassName: standard
+
+repoPersistence:
+  existingClaim: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 5Gi
+  storageClassName: standard
+
+web:
+  replicas: 1
+  service:
+    type: NodePort
+    port: 80
+    targetPort: 80
+    nodePort: 30080
+  readinessProbe:
+    initialDelaySeconds: 90
+    periodSeconds: 10
+    failureThreshold: 24
+  livenessProbe:
+    initialDelaySeconds: 150
+    periodSeconds: 30
+  resources: {}
+
+workers:
+  replicas: 2
+  podManagementPolicy: Parallel
+  maxAgentsPerWorker: 2
+  minReadyStartup: 2
+  minReadySync: 1
+  readinessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    failureThreshold: 12
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 15
+  resources: {}
+
+runtimeConfig:
+  startupPollIntervalSeconds: 3
+  pollIntervalSeconds: 5
+  timeoutSeconds: 300
+
+postInstallJob:
+  enabled: true
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 300
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: fossology.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []

@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: fossology-workers
+  namespace: fossology
+spec:
+  serviceName: fossology-workers
+  podManagementPolicy: Parallel
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fossology-worker
+  template:
+    metadata:
+      labels:
+        app: fossology-worker
+    spec:
+      containers:
+        - name: fossology-worker
+          image: fossology-worker:poc
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 22
+              name: ssh
+          volumeMounts:
+            - name: fossology-repo
+              mountPath: /srv/fossology/repository
+            - name: ssh-public
+              mountPath: /run/secrets/ssh
+              readOnly: true
+            - name: db-conf
+              mountPath: /usr/local/etc/fossology/Db.conf
+              subPath: Db.conf
+          readinessProbe:
+            tcpSocket:
+              port: 22
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            tcpSocket:
+              port: 22
+            initialDelaySeconds: 30
+            periodSeconds: 15
+      volumes:
+        - name: fossology-repo
+          persistentVolumeClaim:
+            claimName: fossology-repo
+        - name: ssh-public
+          secret:
+            secretName: fossology-ssh-public
+            defaultMode: 0600
+        - name: db-conf
+          secret:
+            secretName: fossology-db-conf
