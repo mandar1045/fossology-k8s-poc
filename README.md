@@ -99,6 +99,9 @@ cd fossology-k8s-poc
 # Deploys everything on a local kind cluster
 make up
 
+# Deploys the PoC using your current local FOSSology checkout/branch
+make up-branch FOSSOLOGY_REPO_DIR=../fossology-gsoc/fossology
+
 # Runs the full end-to-end smoke test
 make test
 ```
@@ -121,6 +124,13 @@ make down
 6. Deploys PostgreSQL, the web/scheduler pod, and 2 worker pods
 7. Waits for all pods to become ready
 
+### What `make up-branch` does
+
+1. Builds a web image from the current branch in your local FOSSology checkout
+2. Builds the worker image on top of that branch-built web image
+3. Loads both images into kind
+4. Deploys the same PoC wiring against your live branch code instead of the fixed release image
+
 ### What `make test` validates
 
 The [smoke test](scripts/smoke-test.sh) is a 9-step pipeline:
@@ -141,6 +151,7 @@ The [smoke test](scripts/smoke-test.sh) is a 9-step pipeline:
 
 ```bash
 make up      # deploy everything
+make up-branch FOSSOLOGY_REPO_DIR=../fossology-gsoc/fossology
 make test    # run smoke test
 make down    # tear down
 ```
@@ -149,6 +160,7 @@ make down    # tear down
 
 ```bash
 make up-phase1       # deploy via Helm
+make up-phase1-branch FOSSOLOGY_REPO_DIR=../fossology-gsoc/fossology
 make test            # same smoke test
 make render-phase1   # dry-run template rendering
 make lint-phase1     # lint the chart
@@ -205,8 +217,10 @@ No per-agent images. No custom build system. Just the upstream FOSSology image p
 
 | Command | Description |
 |---------|-------------|
-| `make up` | Build worker image, create kind cluster, deploy everything |
-| `make up-phase1` | Same as above but deploys via the Helm chart |
+| `make up` | Build the default worker image, create kind cluster, deploy everything |
+| `make up-branch` | Build from a local FOSSology branch checkout and deploy against that code |
+| `make up-phase1` | Deploy via the Helm chart |
+| `make up-phase1-branch` | Helm deployment path using a local FOSSology branch checkout |
 | `make test` | Run the full end-to-end smoke test |
 | `make down` | Delete the kind cluster |
 | `make status` | Show pod status |

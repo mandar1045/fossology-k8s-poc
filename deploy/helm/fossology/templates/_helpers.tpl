@@ -50,8 +50,12 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- printf "%s-runtime-config" (include "fossology.fullname" .) -}}
 {{- end -}}
 
-{{- define "fossology.fossologyImage" -}}
-{{- printf "%s:%s" .Values.images.fossology.repository .Values.images.fossology.tag -}}
+{{- define "fossology.webImage" -}}
+{{- printf "%s:%s" .Values.images.web.repository .Values.images.web.tag -}}
+{{- end -}}
+
+{{- define "fossology.workerImage" -}}
+{{- printf "%s:%s" .Values.images.worker.repository .Values.images.worker.tag -}}
 {{- end -}}
 
 {{- define "fossology.postgresImage" -}}

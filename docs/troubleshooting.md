@@ -92,6 +92,12 @@ kubectl rollout restart statefulset/fossology-workers -n fossology
 kubectl rollout restart deployment/fossology-web -n fossology
 ```
 
+If you are proving integration against a local FOSSology branch checkout, rebuild and redeploy with:
+
+```bash
+make up-branch FOSSOLOGY_REPO_DIR=../fossology-gsoc/fossology
+```
+
 ## Jobs Finish But Only One Worker Shows Activity
 
 Run the full smoke test:

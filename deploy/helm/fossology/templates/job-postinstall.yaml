@@ -19,8 +19,8 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: fo-postinstall
-          image: {{ include "fossology.fossologyImage" . }}
-          imagePullPolicy: {{ .Values.images.fossology.pullPolicy }}
+          image: {{ include "fossology.webImage" . }}
+          imagePullPolicy: {{ .Values.images.web.pullPolicy }}
           command:
             - /bin/bash
             - -c

@@ -1,8 +1,10 @@
-.PHONY: build up up-phase1 down clean test proof status logs-scheduler logs-config-sync logs-workers logs-db keys check-conf test-ssh test-dns render-phase1 lint-phase1
+.PHONY: build build-branch up up-branch up-phase1 up-phase1-branch down clean test proof status logs-scheduler logs-config-sync logs-workers logs-db keys check-conf test-ssh test-dns render-phase1 lint-phase1
 
 KIND_CLUSTER ?= fossology-poc
 KIND_CONFIG ?= manifests/kind/kind-config.yaml
+FOSSOLOGY_IMAGE ?= fossology/fossology:4.4.0
 WORKER_IMAGE ?= fossology-worker:poc
+FOSSOLOGY_REPO_DIR ?= ../fossology-gsoc/fossology
 NAMESPACE ?= fossology
 WORKER_FQDN ?= fossology-workers-0.fossology-workers.$(NAMESPACE).svc.cluster.local
 HELM_RELEASE ?= fossology
@@ -10,16 +12,25 @@ HELM_CHART ?= deploy/helm/fossology
 HELM_VALUES ?= $(HELM_CHART)/values.yaml
 
 build:
-	docker build -t $(WORKER_IMAGE) -f manifests/images/worker/Dockerfile .
+	FOSSOLOGY_IMAGE=$(FOSSOLOGY_IMAGE) WORKER_IMAGE=$(WORKER_IMAGE) bash scripts/build-images.sh
+
+build-branch:
+	BUILD_FOSSOLOGY_FROM_SOURCE=1 FOSSOLOGY_REPO_DIR=$(FOSSOLOGY_REPO_DIR) FOSSOLOGY_IMAGE=$(FOSSOLOGY_IMAGE) WORKER_IMAGE=$(WORKER_IMAGE) bash scripts/build-images.sh
 
 keys:
 	bash scripts/generate-ssh-keys.sh
 
 up: build
-	bash scripts/setup.sh
+	FOSSOLOGY_IMAGE=$(FOSSOLOGY_IMAGE) WORKER_IMAGE=$(WORKER_IMAGE) bash scripts/setup.sh
+
+up-branch:
+	BUILD_FOSSOLOGY_FROM_SOURCE=1 FOSSOLOGY_REPO_DIR=$(FOSSOLOGY_REPO_DIR) FOSSOLOGY_IMAGE=$(FOSSOLOGY_IMAGE) WORKER_IMAGE=$(WORKER_IMAGE) bash scripts/setup.sh
 
 up-phase1: build
-	DEPLOY_MODE=helm HELM_RELEASE=$(HELM_RELEASE) HELM_CHART=$(HELM_CHART) HELM_VALUES=$(HELM_VALUES) bash scripts/setup.sh
+	DEPLOY_MODE=helm FOSSOLOGY_IMAGE=$(FOSSOLOGY_IMAGE) WORKER_IMAGE=$(WORKER_IMAGE) HELM_RELEASE=$(HELM_RELEASE) HELM_CHART=$(HELM_CHART) HELM_VALUES=$(HELM_VALUES) bash scripts/setup.sh
+
+up-phase1-branch:
+	BUILD_FOSSOLOGY_FROM_SOURCE=1 DEPLOY_MODE=helm FOSSOLOGY_REPO_DIR=$(FOSSOLOGY_REPO_DIR) FOSSOLOGY_IMAGE=$(FOSSOLOGY_IMAGE) WORKER_IMAGE=$(WORKER_IMAGE) HELM_RELEASE=$(HELM_RELEASE) HELM_CHART=$(HELM_CHART) HELM_VALUES=$(HELM_VALUES) bash scripts/setup.sh
 
 test:
 	bash scripts/smoke-test.sh

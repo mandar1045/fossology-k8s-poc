@@ -20,8 +20,8 @@ spec:
     spec:
       containers:
         - name: fossology-worker
-          image: {{ include "fossology.fossologyImage" . }}
-          imagePullPolicy: {{ .Values.images.fossology.pullPolicy }}
+          image: {{ include "fossology.workerImage" . }}
+          imagePullPolicy: {{ .Values.images.worker.pullPolicy }}
           ports:
             - containerPort: 22
               name: ssh

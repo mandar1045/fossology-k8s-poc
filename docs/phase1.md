@@ -23,6 +23,7 @@ Deploy on kind:
 
 ```bash
 make up-phase1
+make up-phase1-branch FOSSOLOGY_REPO_DIR=../fossology-gsoc/fossology
 make test
 ```
 
@@ -47,6 +48,6 @@ make lint-phase1
 ## Notes
 
 - The current chart assumes the SSH key secrets are created first by [`scripts/generate-ssh-keys.sh`](/home/mandar12/Desktop/gsoc/fossology-k8s-poc/scripts/generate-ssh-keys.sh).
-- The local `values.yaml` keeps the kind-friendly `NodePort` service and `Never` image pull policy.
+- The local `values.yaml` keeps the kind-friendly `NodePort` service, `IfNotPresent` web image pull policy, and `Never` worker image pull policy.
 - If `helm` is not installed locally, [`scripts/run-helm.sh`](/home/mandar12/Desktop/gsoc/fossology-k8s-poc/scripts/run-helm.sh) falls back to `alpine/helm:3.17.3` through Docker.
 - The repo still keeps the older raw-manifest PoC flow because it is useful for low-level debugging.

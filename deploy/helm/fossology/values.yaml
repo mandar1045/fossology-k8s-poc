@@ -1,7 +1,11 @@
 fullnameOverride: fossology
 
 images:
-  fossology:
+  web:
+    repository: fossology/fossology
+    tag: "4.4.0"
+    pullPolicy: IfNotPresent
+  worker:
     repository: fossology-worker
     tag: poc
     pullPolicy: Never

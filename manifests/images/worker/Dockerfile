@@ -1,4 +1,5 @@
-FROM fossology/fossology:4.4.0
+ARG BASE_IMAGE=fossology/fossology:4.4.0
+FROM ${BASE_IMAGE}
 
 RUN apt-get update && apt-get install -y openssh-server && \
     mkdir -p /run/sshd /root/.ssh /home/fossy/.ssh && \
@@ -10,8 +11,83 @@ RUN apt-get update && apt-get install -y openssh-server && \
     sed -i 's/#MaxSessions 10/MaxSessions 50/' /etc/ssh/sshd_config && \
     ssh-keygen -A
 
-COPY manifests/images/worker/entrypoint.sh /entrypoint-worker.sh
-COPY manifests/images/worker/agent-wrapper.sh /usr/local/bin/agent-wrapper.sh
+RUN cat <<'EOF' > /entrypoint-worker.sh
+#!/bin/bash
+set -euo pipefail
+
+echo "[worker] Starting FOSSology worker entrypoint..."
+
+if ! id -u fossy >/dev/null 2>&1; then
+  groupadd -g 999 fossy 2>/dev/null || true
+  useradd -m -u 999 -g 999 -s /bin/bash fossy 2>/dev/null || true
+  echo "[worker] Created missing fossy user."
+fi
+
+if [ -f /run/secrets/ssh/authorized_keys ]; then
+  cp /run/secrets/ssh/authorized_keys /root/.ssh/authorized_keys
+  chmod 600 /root/.ssh/authorized_keys
+
+  mkdir -p /home/fossy/.ssh
+  cp /run/secrets/ssh/authorized_keys /home/fossy/.ssh/authorized_keys
+  chmod 700 /home/fossy/.ssh
+  chmod 600 /home/fossy/.ssh/authorized_keys
+  chown -R fossy:fossy /home/fossy/.ssh
+
+  echo "[worker] SSH authorized_keys installed for root and fossy."
+else
+  echo "[worker] WARNING: missing /run/secrets/ssh/authorized_keys"
+fi
+
+if [ -f /usr/local/etc/fossology/Db.conf ]; then
+  echo "[worker] Db.conf is present."
+else
+  echo "[worker] WARNING: missing /usr/local/etc/fossology/Db.conf"
+fi
+
+echo "[worker] Wrapped agents available:"
+for agent in ecc copyright ipra ojo keyword nomos; do
+  if [ -x "/usr/local/share/fossology/${agent}/agent/${agent}" ]; then
+    echo "[worker]   - ${agent}"
+  fi
+done
+
+touch /tmp/worker-agent-wrapper.log
+chmod 666 /tmp/worker-agent-wrapper.log
+tail -F /tmp/worker-agent-wrapper.log &
+
+ssh-keygen -A 2>/dev/null || true
+
+echo "[worker] Starting sshd with verbose auth logging..."
+exec /usr/sbin/sshd -D -e
+EOF
+
+RUN cat <<'EOF' > /usr/local/bin/agent-wrapper.sh
+#!/bin/bash
+set -euo pipefail
+
+agent_name="$1"
+shift
+
+agent_bin="$1"
+shift
+
+filtered_args=()
+seen_scheduler_start=0
+
+for arg in "$@"; do
+  if [[ "$arg" == "--scheduler_start" ]]; then
+    if (( seen_scheduler_start )); then
+      printf '[worker-agent-wrapper] agent=%s dropping duplicate --scheduler_start\n' \
+        "$agent_name" >> /tmp/worker-agent-wrapper.log
+      continue
+    fi
+    seen_scheduler_start=1
+  fi
+  filtered_args+=("$arg")
+done
+
+exec -a "$agent_name" "$agent_bin" "${filtered_args[@]}"
+EOF
 
 RUN chmod +x /entrypoint-worker.sh /usr/local/bin/agent-wrapper.sh && \
     for agent in ecc copyright ipra ojo keyword nomos; do \
@@ -28,4 +104,4 @@ RUN chmod +x /entrypoint-worker.sh /usr/local/bin/agent-wrapper.sh && \
 
 EXPOSE 22
 
-ENTRYPOINT ["/entrypoint-worker.sh"]
+ENTRYPOINT ["/bin/bash", "/entrypoint-worker.sh"]

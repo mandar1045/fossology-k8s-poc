@@ -86,8 +86,13 @@ spec:
             - -c
             - |
               set -euo pipefail
-
+              
               echo "[web] Setting up SSH client..."
+              if ! id -u fossy >/dev/null 2>&1; then
+                groupadd -g 999 fossy 2>/dev/null || true
+                useradd -m -u 999 -g 999 -s /bin/bash fossy 2>/dev/null || true
+                echo "[web] Created missing fossy user."
+              fi
               mkdir -p /root/.ssh /home/fossy/.ssh
               cp /run/secrets/ssh-private/id_ed25519 /root/.ssh/id_ed25519
               cp /run/secrets/ssh-private/id_ed25519 /home/fossy/.ssh/id_ed25519
@@ -162,8 +167,7 @@ spec:
                 --min-ready-workers="${WORKER_MIN_READY_SYNC}" \
                 --scheduler-host="${MY_POD_IP}" \
                 --poll-interval-seconds=5 \
-                --timeout-seconds=300 \
-                --signal-command='pkill -HUP -f /usr/local/share/fossology/scheduler/agent/fo_scheduler'
+                --timeout-seconds=300
           env:
             - name: MY_POD_IP
               valueFrom:

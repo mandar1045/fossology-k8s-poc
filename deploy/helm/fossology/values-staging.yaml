@@ -1,5 +1,7 @@
 images:
-  fossology:
+  web:
+    pullPolicy: IfNotPresent
+  worker:
     pullPolicy: IfNotPresent
 
 repoPersistence:
