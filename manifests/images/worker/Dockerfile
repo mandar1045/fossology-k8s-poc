@@ -86,20 +86,29 @@ for arg in "$@"; do
   filtered_args+=("$arg")
 done
 
+if (( seen_scheduler_start )); then
+  sleep_time=$(( RANDOM % 8 + 1 ))
+  printf '[worker-agent-wrapper] agent=%s splaying startup by %ds\n' "$agent_name" "$sleep_time" >> /tmp/worker-agent-wrapper.log
+  sleep "$sleep_time"
+fi
+
 exec -a "$agent_name" "$agent_bin" "${filtered_args[@]}"
 EOF
 
 RUN chmod +x /entrypoint-worker.sh /usr/local/bin/agent-wrapper.sh && \
-    for agent in ecc copyright ipra ojo keyword nomos; do \
-      mv "/usr/local/share/fossology/${agent}/agent/${agent}" "/usr/local/share/fossology/${agent}/agent/${agent}.real"; \
-      printf '%s\n' \
-        '#!/bin/bash' \
-        "exec /usr/local/bin/agent-wrapper.sh ${agent} /usr/local/share/fossology/${agent}/agent/${agent}.real \"\$@\"" \
-        > "/usr/local/share/fossology/${agent}/agent/${agent}"; \
-      chmod +x "/usr/local/share/fossology/${agent}/agent/${agent}"; \
-    done && \
-    for agent in ecc copyright ipra ojo keyword nomos; do \
-      ln -sf "/usr/local/share/fossology/${agent}/agent/${agent}" "/usr/local/bin/${agent}"; \
+    for agent_path in /usr/local/share/fossology/*/agent/*; do \
+      if [ -x "$agent_path" ] && [ -f "$agent_path" ]; then \
+        agent_name="$(basename "$agent_path")"; \
+        if [ "$agent_name" != "fo_scheduler" ]; then \
+          mv "$agent_path" "${agent_path}.real"; \
+          printf '%s\n' \
+            '#!/bin/bash' \
+            "exec /usr/local/bin/agent-wrapper.sh ${agent_name} ${agent_path}.real \"\$@\"" \
+            > "$agent_path"; \
+          chmod +x "$agent_path"; \
+          ln -sf "$agent_path" "/usr/local/bin/${agent_name}" 2>/dev/null || true; \
+        fi; \
+      fi; \
     done
 
 EXPOSE 22
