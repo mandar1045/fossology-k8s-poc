@@ -279,6 +279,20 @@ No per-agent images. No custom build system. Just the upstream FOSSology image p
 │   └── run-helm.sh                  # Helm wrapper (Docker fallback)
 └── test-data/                       # Sample archives for smoke test
 ```
+## Proof 
+<img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/5ce91eb3-a3ef-4056-9f8a-82532670ccf9" />
+<img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/e9f2ba20-92de-4cf2-9865-0ce2a7dcdf07" />
+<img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/9058d6db-d0da-4f3a-b99d-20878d7864c4" />
+<img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/270fb1d8-69a0-4b29-9acf-832bc1b4196f" />
+<img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/42cfde69-ccef-4078-afdd-c4697f75f7cc" />
+<img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/fee72150-747f-4926-8379-ea4956341ac6" />
+<img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/046b010d-3594-48d0-b48b-05e1571c8d50" />
+
+
+
+
+
+
 
 ## Documentation
 
