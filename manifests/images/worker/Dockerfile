@@ -71,28 +71,35 @@ shift
 agent_bin="$1"
 shift
 
-filtered_args=()
+log_file="/tmp/worker-agent-wrapper.log"
+declare -a forwarded_args=()
 seen_scheduler_start=0
+job_id="unknown"
 
 for arg in "$@"; do
   if [[ "$arg" == "--scheduler_start" ]]; then
     if (( seen_scheduler_start )); then
       printf '[worker-agent-wrapper] agent=%s dropping duplicate --scheduler_start\n' \
-        "$agent_name" >> /tmp/worker-agent-wrapper.log
+        "$agent_name" >> "$log_file"
       continue
     fi
     seen_scheduler_start=1
   fi
-  filtered_args+=("$arg")
+  if [[ "$arg" == --jobId=* ]]; then
+    job_id="${arg#--jobId=}"
+  fi
+  forwarded_args+=("$arg")
 done
 
 if (( seen_scheduler_start )); then
-  sleep_time=$(( RANDOM % 8 + 1 ))
-  printf '[worker-agent-wrapper] agent=%s splaying startup by %ds\n' "$agent_name" "$sleep_time" >> /tmp/worker-agent-wrapper.log
+  sleep_time=$(( RANDOM % 10 + 1 ))
+  printf '[worker-agent-wrapper] agent=%s splaying startup by %ds\n' "$agent_name" "$sleep_time" >> "$log_file"
   sleep "$sleep_time"
 fi
 
-exec -a "$agent_name" "$agent_bin" "${filtered_args[@]}"
+printf '[worker-agent-wrapper] agent=%s job_id=%s exec=%s args=%s\n' \
+  "$agent_name" "$job_id" "$agent_bin" "${forwarded_args[*]}" >> "$log_file"
+exec -a "$agent_name" "${agent_bin}" "${forwarded_args[@]}"
 EOF
 
 RUN chmod +x /entrypoint-worker.sh /usr/local/bin/agent-wrapper.sh && \
