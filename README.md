@@ -5,6 +5,55 @@
 
 This proof of concept demonstrates that FOSSology's existing scheduler can dispatch license-scanning agents to remote Kubernetes pods over SSH — no ETCD, no `kubectl exec`, no core rewrites. It works *with* FOSSology's architecture instead of against it.
 
+## TL;DR
+
+- This PoC proves that FOSSology's existing scheduler can dispatch scan agents to Kubernetes worker pods over SSH without replacing its native remote-host model.
+- Worker discovery is dynamic: ready pods are rendered into `[HOSTS]` at runtime instead of being hardcoded.
+- The repo includes repeatable validation via `make up`, `make test`, and `make proof`.
+
+## Current Status
+
+### Working ✅
+
+- Local `kind` deployment for PostgreSQL, the web/scheduler pod, and SSH-accessible worker pods
+- Dynamic `[HOSTS]` rendering from live ready worker pod state
+- Remote agent execution from `fo_scheduler` to worker pods over SSH
+- End-to-end upload and scan completion validated by the smoke test
+- Helm chart, ArgoCD manifests, and environment-specific values files in the repo
+
+### In Progress ⚠️
+
+- Extending the validated Phase 1 prototype toward the broader scalable agent architecture goal
+- Separating scheduler scaling from web scaling
+- Production hardening around storage guidance, ingress, environment values, and operational documentation
+
+### Next Steps 🚀
+
+1. Split the scheduler into its own dedicated deployment so web scaling and scheduler scaling are independent.
+2. Extend the scheduler host model to support agent capability lists per host and update `get_host()` selection logic accordingly.
+3. Add autoscaling policies for worker pools, ideally driven by queue-aware signals such as KEDA/PostgreSQL triggers for pending jobs.
+4. Continue production hardening with storage-class guidance, ingress, environment values, and operational documentation.
+
+## Metrics / Validation Results
+
+| Validation Area | Known Result |
+|-----------------|--------------|
+| Dynamic worker discovery | `fossology.conf` is rendered with `[HOSTS]` entries from live ready worker pods rather than a hardcoded list |
+| Remote dispatch path | `fo_scheduler` SSH-tests every worker pod and launches agents over the pod network |
+| Multi-worker execution | Concurrent `nomos` scans leave execution traces on at least 2 worker pods |
+| End-to-end scan flow | The smoke test uploads 4 test archives, queues scans, waits for completion, and verifies execution across workers |
+| Worker-agent startup validation | Scheduler startup logs are checked for invalidated wrapped agents after the duplicate `--scheduler_start` fix |
+
+## How to Review This Repo Quickly
+
+1. Read [TL;DR](#tldr).
+2. See [Architecture](#architecture).
+3. Run `make up` and `make test`.
+4. Check `make proof` for a support log bundle.
+5. Review the key implementation details in [`scripts/render_fossology_conf.py`](scripts/render_fossology_conf.py), [`manifests/images/worker/agent-wrapper.sh`](manifests/images/worker/agent-wrapper.sh), and [`deploy/helm/fossology/`](deploy/helm/fossology/).
+
+---
+
 ## Why This Approach
 
 Two previous GSoC attempts ([2021](https://github.com/fossology/fossology/pull/2086), [2025](https://github.com/fossology/fossology/wiki/GSoC-2025-Microservices-Infrastructure)) tried to replace FOSSology's internals: swapping SSH for `kubectl exec`, replacing `fossology.conf` with ETCD, and building per-agent Docker images. Both were invasive, fragile, and never merged.
@@ -20,6 +69,8 @@ This PoC takes a different path. FOSSology's scheduler already knows how to disp
 - A config-sync sidecar that watches the Kubernetes API for ready worker pods and dynamically rewrites `[HOSTS]`, then signals `fo_scheduler` to reload
 - An agent wrapper shim that fixes a real `fo_scheduler` bug where remote agents receive duplicate `--scheduler_start` flags
 - A Helm chart, ArgoCD manifests, and multi-environment values for GitOps-ready deployment
+
+---
 
 ## Architecture
 
@@ -71,6 +122,8 @@ This PoC takes a different path. FOSSology's scheduler already knows how to disp
 | `fossology-workers` | StatefulSet (2 replicas) | `fossology-worker:poc` | SSH server + all agent binaries (nomos, ojo, copyright, ecc, monk, keyword, ipra) |
 | `fossology-db` | StatefulSet | `postgres:16` | PostgreSQL database with persistent storage |
 
+---
+
 ## What This PoC Proves
 
 This isn't just a "FOSSology runs on Kubernetes" demo. The smoke test validates the full dispatch pipeline end-to-end:
@@ -79,6 +132,8 @@ This isn't just a "FOSSology runs on Kubernetes" demo. The smoke test validates 
 2. **SSH dispatch works over the pod network** — `fo_scheduler` SSHes into each worker pod as `fossy` and launches agents
 3. **Jobs actually run on remote workers** — concurrent `nomos` scans leave execution traces on at least 2 different worker pods
 4. **Agent wrapper shim solves a real bug** — several agents (`ecc`, `copyright`, `ojo`, `keyword`, `ipra`) reject duplicate `--scheduler_start` flags sent during remote startup validation. The wrapper deduplicates gracefully while preserving the original process name for `VERSION` lookup
+
+---
 
 ## Quick Start
 
@@ -145,6 +200,8 @@ The [smoke test](scripts/smoke-test.sh) is a 9-step pipeline:
 8. Queues concurrent `nomos` scans across all uploads
 9. Waits for scan completion and verifies `nomos` execution traces appear on **at least 2 worker pods**
 
+---
+
 ## Deployment Paths
 
 ### Raw manifests (debugging-friendly)
@@ -183,6 +240,8 @@ kubectl apply -f deploy/argocd/fossology-application.yaml
 
 The Application points at the Helm chart as the sync source. Swap `valueFiles` in the Application manifest for staging or production environments.
 
+---
+
 ## Key Implementation Details
 
 ### Dynamic `[HOSTS]` registration
@@ -213,6 +272,8 @@ A single [Dockerfile](manifests/images/worker/Dockerfile) extends `fossology/fos
 
 No per-agent images. No custom build system. Just the upstream FOSSology image plus SSH.
 
+---
+
 ## Useful Commands
 
 | Command | Description |
@@ -234,6 +295,8 @@ No per-agent images. No custom build system. Just the upstream FOSSology image p
 | `make proof` | Capture a support/proof log bundle |
 | `make render-phase1` | Dry-run Helm template rendering |
 | `make lint-phase1` | Lint the Helm chart |
+
+---
 
 ## Repository Layout
 
@@ -279,7 +342,10 @@ No per-agent images. No custom build system. Just the upstream FOSSology image p
 │   └── run-helm.sh                  # Helm wrapper (Docker fallback)
 └── test-data/                       # Sample archives for smoke test
 ```
-## Proof 
+
+---
+
+## Proof
 <img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/5ce91eb3-a3ef-4056-9f8a-82532670ccf9" />
 <img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/e9f2ba20-92de-4cf2-9865-0ce2a7dcdf07" />
 <img width="1920" height="1200" alt="image" src="https://github.com/user-attachments/assets/9058d6db-d0da-4f3a-b99d-20878d7864c4" />
@@ -294,11 +360,15 @@ No per-agent images. No custom build system. Just the upstream FOSSology image p
 
 
 
+---
+
 ## Documentation
 
 - [Architecture](docs/architecture.md) — component layout, dynamic host registration, agent wrapper, observability model
 - [Phase 1 Guide](docs/phase1.md) — Helm chart and ArgoCD deployment instructions
 - [Troubleshooting](docs/troubleshooting.md) — common issues and debugging steps
+
+---
 
 ## Author
 
