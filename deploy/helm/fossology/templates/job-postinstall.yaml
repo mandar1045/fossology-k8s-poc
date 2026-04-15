@@ -21,22 +21,15 @@ spec:
         - name: fo-postinstall
           image: {{ include "fossology.webImage" . }}
           imagePullPolicy: {{ .Values.images.web.pullPolicy }}
-          command:
-            - /bin/bash
-            - -c
-            - |
-              set -euo pipefail
-              until pg_isready -h {{ include "fossology.dbHost" . }} -U {{ .Values.database.user }} -d {{ .Values.database.name }}; do
-                echo "Waiting for database..."
-                sleep 3
-              done
-
-              cat <<'EOF' > /usr/local/etc/fossology/Db.conf
-              dbname={{ .Values.database.name }};
-              host={{ include "fossology.dbHost" . }};
-              user={{ .Values.database.user }};
-              password={{ .Values.database.password }};
-              EOF
-
-              /usr/local/lib/fossology/fo-postinstall --common --database --licenseref
+          command: ["/bin/bash", "/config-source/run-postinstall.sh"]
+          env:
+{{ include "fossology.envDatabase" . | nindent 12 }}
+          volumeMounts:
+            - name: config-source
+              mountPath: /config-source
+              readOnly: true
+      volumes:
+        - name: config-source
+          configMap:
+            name: {{ include "fossology.runtimeConfigName" . }}
 {{- end }}

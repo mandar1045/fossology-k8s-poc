@@ -15,6 +15,7 @@ This repo now has that layout:
 - Dynamic `fossology.conf` rendering and config-sync sidecar carried into the chart
 - Helm hook job for `fo-postinstall`
 - Environment-specific values for local, staging, and production-like deployments
+- Chart-local `README.md` and `values.schema.json` so the Helm entry point is easier to understand and validate
 - ArgoCD manifests that point at the Helm chart as the sync source
 
 ## Local Use
@@ -38,6 +39,11 @@ Lint the chart:
 ```bash
 make lint-phase1
 ```
+
+Chart-specific documentation lives beside the chart:
+
+- [`deploy/helm/fossology/README.md`](/home/mandar12/Desktop/gsoc/fossology-k8s-poc/deploy/helm/fossology/README.md)
+- [`deploy/helm/fossology/values.schema.json`](/home/mandar12/Desktop/gsoc/fossology-k8s-poc/deploy/helm/fossology/values.schema.json)
 
 ## ArgoCD Use
 

@@ -61,3 +61,54 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "fossology.postgresImage" -}}
 {{- printf "%s:%s" .Values.images.postgres.repository .Values.images.postgres.tag -}}
 {{- end -}}
+
+{{- define "fossology.envPodIp" -}}
+- name: MY_POD_IP
+  valueFrom:
+    fieldRef:
+      fieldPath: status.podIP
+{{- end -}}
+
+{{- define "fossology.envPodNamespace" -}}
+- name: POD_NAMESPACE
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.namespace
+{{- end -}}
+
+{{- define "fossology.envDatabase" -}}
+- name: FOSSOLOGY_DB_HOST
+  value: {{ include "fossology.dbHost" . | quote }}
+- name: FOSSOLOGY_DB_NAME
+  value: {{ .Values.database.name | quote }}
+- name: FOSSOLOGY_DB_USER
+  value: {{ .Values.database.user | quote }}
+- name: FOSSOLOGY_DB_PASSWORD
+  value: {{ .Values.database.password | quote }}
+{{- end -}}
+
+{{- define "fossology.envWaitForDb" -}}
+- name: FOSSOLOGY_DB_HOST
+  value: {{ include "fossology.dbHost" . | quote }}
+- name: FOSSOLOGY_DB_NAME
+  value: {{ .Values.database.name | quote }}
+- name: FOSSOLOGY_DB_USER
+  value: {{ .Values.database.user | quote }}
+{{- end -}}
+
+{{- define "fossology.envRenderConfig" -}}
+{{ include "fossology.envPodIp" . }}
+{{ include "fossology.envPodNamespace" . }}
+- name: WORKER_MAX_AGENTS
+  value: {{ .Values.workers.maxAgentsPerWorker | quote }}
+- name: FOSSOLOGY_WORKER_LABEL_SELECTOR
+  value: {{ printf "app=%s-worker" (include "fossology.fullname" .) | quote }}
+- name: FOSSOLOGY_WORKER_HEADLESS_SERVICE
+  value: {{ printf "%s-workers" (include "fossology.fullname" .) | quote }}
+- name: FOSSOLOGY_WORKER_CONF_DIR
+  value: "/usr/local/etc/fossology"
+- name: FOSSOLOGY_RENDER_TEMPLATE
+  value: /config-source/fossology.conf.tmpl
+- name: FOSSOLOGY_RENDER_TIMEOUT_SECONDS
+  value: {{ .Values.runtimeConfig.timeoutSeconds | quote }}
+{{- end -}}

@@ -3,8 +3,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-DEFAULT_SOURCE_REPO="$ROOT_DIR/../fossology-gsoc/fossology"
 BUILD_FOSSOLOGY_FROM_SOURCE="${BUILD_FOSSOLOGY_FROM_SOURCE:-0}"
 FOSSOLOGY_REPO_DIR="${FOSSOLOGY_REPO_DIR:-}"
 FOSSOLOGY_IMAGE="${FOSSOLOGY_IMAGE:-}"
@@ -22,13 +20,28 @@ slugify() {
   echo "$1" | tr '[:upper:]' '[:lower:]' | sed 's#[^a-z0-9_.-]#-#g'
 }
 
+default_source_repo() {
+  if [ -d "$ROOT_DIR/fossology-gsoc/fossology/.git" ]; then
+    echo "$ROOT_DIR/fossology-gsoc/fossology"
+    return
+  fi
+
+  if [ -d "$ROOT_DIR/../fossology-gsoc/fossology/.git" ]; then
+    echo "$ROOT_DIR/../fossology-gsoc/fossology"
+    return
+  fi
+
+  echo "$ROOT_DIR/fossology-gsoc/fossology"
+}
+
 ensure_source_repo() {
   if [ -n "$FOSSOLOGY_REPO_DIR" ]; then
     return 0
   fi
 
-  if [ -d "$DEFAULT_SOURCE_REPO/.git" ]; then
-    FOSSOLOGY_REPO_DIR="$DEFAULT_SOURCE_REPO"
+  FOSSOLOGY_REPO_DIR="$(default_source_repo)"
+
+  if [ -d "$FOSSOLOGY_REPO_DIR/.git" ]; then
     return 0
   fi
 

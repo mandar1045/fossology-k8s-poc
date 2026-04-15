@@ -67,7 +67,9 @@ workers:
   replicas: 2
   podManagementPolicy: Parallel
   maxAgentsPerWorker: 2
+  # Block the first config render until the scheduler has the expected worker pool.
   minReadyStartup: 2
+  # Keep at least one worker registered during rollouts and transient restarts.
   minReadySync: 1
   readinessProbe:
     initialDelaySeconds: 10
@@ -79,7 +81,9 @@ workers:
   resources: {}
 
 runtimeConfig:
+  # Startup polls faster so the initial render does not stall the web pod for long.
   startupPollIntervalSeconds: 3
+  # After startup, steady-state sync can be a little less aggressive.
   pollIntervalSeconds: 5
   timeoutSeconds: 300
 

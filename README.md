@@ -151,11 +151,12 @@ This isn't just a "FOSSology runs on Kubernetes" demo. The smoke test validates 
 git clone https://github.com/mandar1045/fossology-k8s-poc.git
 cd fossology-k8s-poc
 
-# Deploys everything on a local kind cluster
+# Deploys everything on a local kind cluster.
+# If fossology-gsoc/fossology exists here, make up builds from that checkout automatically.
 make up
 
 # Deploys the PoC using your current local FOSSology checkout/branch
-make up-branch FOSSOLOGY_REPO_DIR=../fossology-gsoc/fossology
+make up-branch FOSSOLOGY_REPO_DIR=fossology-gsoc/fossology
 
 # Runs the full end-to-end smoke test
 make test
@@ -171,13 +172,14 @@ make down
 
 ### What `make up` does
 
-1. Builds the worker Docker image from `manifests/images/worker/Dockerfile`
-2. Creates a `kind` cluster with the config in `manifests/kind/kind-config.yaml`
-3. Loads the worker image into the cluster
-4. Generates SSH key pairs and creates Kubernetes secrets
-5. Renders a dynamic `fossology.conf` from the template using live pod state
-6. Deploys PostgreSQL, the web/scheduler pod, and 2 worker pods
-7. Waits for all pods to become ready
+1. Builds from `fossology-gsoc/fossology` automatically when that checkout exists, otherwise reuses the default upstream web image
+2. Builds the worker Docker image from `manifests/images/worker/Dockerfile`
+3. Creates a `kind` cluster with the config in `manifests/kind/kind-config.yaml`
+4. Loads the worker image into the cluster
+5. Generates SSH key pairs and creates Kubernetes secrets
+6. Renders a dynamic `fossology.conf` from the template using live pod state
+7. Deploys PostgreSQL, the web/scheduler pod, and 2 worker pods
+8. Waits for all pods to become ready
 
 ### What `make up-branch` does
 
@@ -208,7 +210,7 @@ The [smoke test](scripts/smoke-test.sh) is a 9-step pipeline:
 
 ```bash
 make up      # deploy everything
-make up-branch FOSSOLOGY_REPO_DIR=../fossology-gsoc/fossology
+make up-branch FOSSOLOGY_REPO_DIR=fossology-gsoc/fossology
 make test    # run smoke test
 make down    # tear down
 ```
@@ -227,6 +229,8 @@ The Helm chart lives at [`deploy/helm/fossology/`](deploy/helm/fossology/) and i
 
 - All templates: web deployment, worker StatefulSet, PostgreSQL StatefulSet, headless services, PVCs, RBAC, Ingress, ConfigMaps
 - `fo-postinstall` as a Helm lifecycle hook
+- Runtime helper scripts mounted from the chart ConfigMap so the templates stay readable
+- A chart-local [`README.md`](deploy/helm/fossology/README.md) and [`values.schema.json`](deploy/helm/fossology/values.schema.json)
 - Environment-specific values: [`values.yaml`](deploy/helm/fossology/values.yaml) (local), [`values-staging.yaml`](deploy/helm/fossology/values-staging.yaml), [`values-production.yaml`](deploy/helm/fossology/values-production.yaml)
 
 ### ArgoCD (GitOps)
@@ -260,6 +264,7 @@ This was the hardest debugging problem in the PoC. When `fo_scheduler` validates
 The fix is a [thin wrapper](manifests/images/worker/agent-wrapper.sh) installed during the Docker build:
 - Deduplicates `--scheduler_start` if it appears twice
 - Preserves the original process name via `exec -a` (critical — without this, agents look for `mods-enabled/<agent>.real/VERSION` and fail)
+- Leaves symlinked `fo_wrapper` agents untouched so newer PHP-backed agents still resolve `<agent>.php` correctly
 - Logs every agent invocation to `/tmp/worker-agent-wrapper.log` for observability
 
 ### Worker image
@@ -278,7 +283,7 @@ No per-agent images. No custom build system. Just the upstream FOSSology image p
 
 | Command | Description |
 |---------|-------------|
-| `make up` | Build the default worker image, create kind cluster, deploy everything |
+| `make up` | Auto-detect a local FOSSology checkout, build if present, create kind cluster, deploy everything |
 | `make up-branch` | Build from a local FOSSology branch checkout and deploy against that code |
 | `make up-phase1` | Deploy via the Helm chart |
 | `make up-phase1-branch` | Helm deployment path using a local FOSSology branch checkout |

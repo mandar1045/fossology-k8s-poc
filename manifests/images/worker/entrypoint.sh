@@ -3,6 +3,12 @@ set -euo pipefail
 
 echo "[worker] Starting FOSSology worker entrypoint..."
 
+if ! id -u fossy >/dev/null 2>&1; then
+  groupadd -g 999 fossy 2>/dev/null || true
+  useradd -m -u 999 -g 999 -s /bin/bash fossy 2>/dev/null || true
+  echo "[worker] Created missing fossy user."
+fi
+
 if [ -f /run/secrets/ssh/authorized_keys ]; then
   cp /run/secrets/ssh/authorized_keys /root/.ssh/authorized_keys
   chmod 600 /root/.ssh/authorized_keys

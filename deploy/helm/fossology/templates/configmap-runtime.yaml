@@ -9,3 +9,13 @@ data:
 {{ .Files.Get "files/fossology.conf.tmpl" | indent 4 }}
   render_fossology_conf.py: |
 {{ .Files.Get "files/render_fossology_conf.py" | indent 4 }}
+  wait-for-db.sh: |
+{{ .Files.Get "files/scripts/wait-for-db.sh" | indent 4 }}
+  init-config-runtime.sh: |
+{{ .Files.Get "files/scripts/init-config-runtime.sh" | indent 4 }}
+  run-render-fossology-conf.sh: |
+{{ .Files.Get "files/scripts/run-render-fossology-conf.sh" | indent 4 }}
+  start-web.sh: |
+{{ .Files.Get "files/scripts/start-web.sh" | indent 4 }}
+  run-postinstall.sh: |
+{{ .Files.Get "files/scripts/run-postinstall.sh" | indent 4 }}
