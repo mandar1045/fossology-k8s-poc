@@ -54,6 +54,10 @@ web:
     port: 80
     targetPort: 80
     nodePort: 30080
+  startupProbe:
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 30
   readinessProbe:
     initialDelaySeconds: 90
     periodSeconds: 10

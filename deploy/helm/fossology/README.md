@@ -27,6 +27,7 @@ The chart mounts a small set of helper scripts from the runtime ConfigMap:
 | `workers.maxAgentsPerWorker` | Advertised scheduler capacity for each worker |
 | `workers.minReadyStartup` | Minimum ready workers required before the first config render succeeds |
 | `workers.minReadySync` | Minimum ready workers preserved during steady-state config refresh |
+| `web.startupProbe` | Startup window for the combined web/scheduler container before liveness checks apply |
 | `runtimeConfig.startupPollIntervalSeconds` | Fast poll loop used only during pod startup |
 | `runtimeConfig.pollIntervalSeconds` | Steady-state config reconciliation interval |
 | `ssh.privateSecretName` | Secret containing the scheduler private key |

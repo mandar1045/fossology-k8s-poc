@@ -118,6 +118,9 @@
         "service": {
           "$ref": "#/definitions/service"
         },
+        "startupProbe": {
+          "$ref": "#/definitions/probe"
+        },
         "readinessProbe": {
           "$ref": "#/definitions/probe"
         },

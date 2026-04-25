@@ -83,6 +83,13 @@ spec:
             - name: ssh-private
               mountPath: /run/secrets/ssh-private
               readOnly: true
+          startupProbe:
+            httpGet:
+              path: /repo
+              port: 80
+            initialDelaySeconds: {{ .Values.web.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.web.startupProbe.periodSeconds }}
+            failureThreshold: {{ .Values.web.startupProbe.failureThreshold }}
           readinessProbe:
             httpGet:
               path: /repo
